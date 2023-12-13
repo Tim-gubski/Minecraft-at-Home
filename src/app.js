@@ -12,35 +12,18 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GameScene } from 'scenes';
 import DIRT from './textures/dirt.png';
-import Player from './components/player.js'
-import Map from './components/map.js'
+import Player from './components/player.js';
+import Map from './components/map.js';
 import GrassTop from './textures/grass_block_top.png';
-
-// Initialize core ThreeJS components
-const scene = new GameScene();
 
 // const camera = new PerspectiveCamera();
 const renderer = new WebGLRenderer({ antialias: true });
 const player = new Player();
 const map = new Map();
 
-// make large platform in map
-let grassTexture = new THREE.TextureLoader().load(GrassTop);
-grassTexture.magFilter = THREE.NearestFilter;
-for (let i = -5; i < 5; i++) {
-    for (let j = -5; j < 5; j++) {
-        let grassBlock = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshLambertMaterial({
-                color: 0x7cbd6b,
-                map: grassTexture 
-            })
-        );
-        grassBlock.position.set(i + 0.5, 0.5, j + 0.5);
-        scene.add(grassBlock);
-        map.addBlock(i, 0.5, j);
-    }
-}
+// Initialize core ThreeJS components
+const scene = new GameScene(map);
+
 console.log(map.chunks);
 
 // Set up renderer, canvas, and minor CSS adjustments
@@ -51,29 +34,7 @@ document.body.style.margin = 0; // Removes margin around page
 document.body.style.overflow = 'hidden'; // Fix scrolling
 document.body.appendChild(canvas);
 
-let hotBar = [];
-let activeItem = 0;
-for (let i = 0; i < 10; i++) {
-    let frame = document.createElement('img');
-    frame.src = DIRT;
-    frame.style.width = '50px';
-    frame.style.height = '50px';
-    if (activeItem === i) {
-        frame.style.border = '5px solid white';
-    } else {
-        frame.style.border = '5px solid gray';
-    }
-    frame.style.position = 'absolute';
-    frame.style.left = '50%';
-    frame.style.transform = `translateX(${(5 - i) * 60 - 60}px)`;
-    frame.style.bottom = '0px';
-    frame.style.zIndex = '100';
-    hotBar.push(frame);
-    document.body.append(frame);
-}
-
 // Set up controls
-
 document.addEventListener('click', function (event) {
     player.controller.lock();
     addCube = event.button == 2;
@@ -82,16 +43,17 @@ document.addEventListener('click', function (event) {
 });
 
 window.addEventListener('wheel', function (event) {
-    if (event.deltaY < 0) {
-        activeItem = (activeItem + 1) % 10;
+    if (event.deltaY > 0) {
+        player.activeItem = (player.activeItem + 1) % 10;
     } else {
-        activeItem = (activeItem - 1 + 10) % 10;
+        player.activeItem = (player.activeItem - 1 + 10) % 10;
     }
-    hotBar.forEach((frame, i) => {
-        if (activeItem === i) {
-            frame.style.border = '5px solid white';
+    player.hotBar.forEach((frame, i) => {
+        if (player.activeItem === i) {
+            // console.log(frame, Player.unselectedBorder);
+            frame.element.style.border = player.selectedBorder;
         } else {
-            frame.style.border = '5px solid gray';
+            frame.element.style.border = player.unselectedBorder;
         }
     });
 });
@@ -161,9 +123,6 @@ let reticle = new THREE.Mesh(
 );
 
 const raycaster = new THREE.Raycaster();
-let pointer = new THREE.Vector2();
-pointer.x = 0;
-pointer.y = 0;
 let addCube = false;
 let removeCube = false;
 // Render loop
@@ -174,7 +133,7 @@ const onAnimationFrameHandler = (timeStamp) => {
     scene.remove(reticle);
 
     // update the picking ray with the camera and pointer position
-    raycaster.setFromCamera(pointer, player.camera);
+    raycaster.setFromCamera(new THREE.Vector2(), player.camera);
 
     // calculate objects intersecting the picking ray
     const intersects = raycaster.intersectObjects(scene.children);
@@ -189,7 +148,7 @@ const onAnimationFrameHandler = (timeStamp) => {
         removeCube = false;
     }
 
-    if (intersects.length > 0) {
+    if (intersects.length > 0 && intersects[0].distance < 10) {
         let cubePos = intersects[0].point;
         let toCamera = player.camera.position.clone().sub(cubePos);
         cubePos.add(toCamera.normalize().multiplyScalar(0.1));
@@ -201,7 +160,9 @@ const onAnimationFrameHandler = (timeStamp) => {
         scene.add(reticle);
 
         if (addCube) {
-            let texture = new THREE.TextureLoader().load(DIRT);
+            let texture = new THREE.TextureLoader().load(
+                player.hotBar[player.activeItem].texture
+            );
             texture.magFilter = THREE.NearestFilter;
             let cubePreview = new THREE.Mesh(
                 new THREE.BoxGeometry(1, 1, 1),
@@ -214,14 +175,19 @@ const onAnimationFrameHandler = (timeStamp) => {
                 Math.floor(cubePos.z) + 0.5
             );
             scene.add(cubePreview);
-            map.addBlock(cubePreview.position.x, cubePreview.position.y, cubePreview.position.z);
-            addCube = false;
+            map.addBlock(
+                cubePreview.position.x,
+                cubePreview.position.y,
+                cubePreview.position.z
+            );
         }
     }
+    addCube = false;
 
     player.updateMovement(keyState, timeStamp, dt);
     player.updatePositions(dt, 0.21);
     player.collide(map, timeStamp);
+    scene.update(player);
 
     renderer.render(scene, player.camera);
     // scene.update && scene.update(timeStamp);

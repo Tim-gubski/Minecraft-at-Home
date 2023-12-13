@@ -4,35 +4,88 @@ import * as THREE from 'three';
 import GrassTop from '../../textures/grass_block_top.png';
 
 class GameScene extends Scene {
-    constructor() {
+    #floorLevel = 0.5;
+    #renderDistance = 10;
+    #cloudHeight = 15;
+    #cloudRenderDistance = 100;
+
+    constructor(map) {
         super();
 
-        let floorTexture = new THREE.TextureLoader().load(GrassTop);
-        floorTexture.wrapS = THREE.RepeatWrapping;
-        floorTexture.wrapT = THREE.RepeatWrapping;
-        floorTexture.repeat.set(100, 100);
-        floorTexture.magFilter = THREE.NearestFilter;
+        this.map = map;
+        this.clouds = [];
+        // let floorTexture = new THREE.TextureLoader().load(GrassTop);
+        // floorTexture.wrapS = THREE.RepeatWrapping;
+        // floorTexture.wrapT = THREE.RepeatWrapping;
+        // floorTexture.repeat.set(100, 100);
+        // floorTexture.magFilter = THREE.NearestFilter;
 
-        const planeGeometry = new THREE.PlaneGeometry(100, 100, 50, 50);
-        const planeMaterial = new THREE.MeshLambertMaterial({
-            color: 0x7cbd6b,
-            map: floorTexture,
-            wireframe: false,
-        });
-        this.floor = new THREE.Mesh(planeGeometry, planeMaterial);
-        this.floor.name = 'floor';
-        this.floor.rotateX(-Math.PI / 2);
+        // const planeGeometry = new THREE.PlaneGeometry(100, 100, 50, 50);
+        // const planeMaterial = new THREE.MeshLambertMaterial({
+        //     color: 0x7cbd6b,
+        //     map: floorTexture,
+        //     wireframe: false,
+        // });
+        // this.floor = new THREE.Mesh(planeGeometry, planeMaterial);
+        // this.floor.name = 'floor';
+        // this.floor.rotateX(-Math.PI / 2);
         // this.add(this.floor);
-        const axesHelper = new THREE.AxesHelper( 5 );
-        axesHelper.name = 'helper';
-        this.add( axesHelper );
 
-        let cube = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshPhongMaterial({ color: 0x00ff00 })
-        );
-        cube.position.set(0, 0.5, 0);
-        this.add(cube);
+        // const axesHelper = new THREE.AxesHelper(5);
+        // axesHelper.name = 'helper';
+        // this.add(axesHelper);
+
+        // let cube = new THREE.Mesh(
+        //     new THREE.BoxGeometry(1, 1, 1),
+        //     new THREE.MeshPhongMaterial({ color: 0x00ff00 })
+        // );
+        // cube.position.set(0, 0.5, 0);
+        // this.add(cube);
+
+        // make large platform in map
+        this.generateChunk(0, 0);
+
+        // let sides = [
+        //     transparent,
+        //     transparent,
+        //     translucent,
+        //     translucent,
+        //     transparent,
+        //     transparent,
+        // ];
+        // make clouds
+        for (let i = 0; i < 20; i++) {
+            let basePoint = new THREE.Vector3(
+                this.getRandomInt(-170, 170),
+                this.#cloudHeight,
+                this.getRandomInt(-170, 170)
+            );
+            let speed = Math.random();
+            let cloud = [];
+            // generate cloud
+            for (let x = 0; x < this.getRandomInt(4, 10); x++) {
+                let min = this.getRandomInt(-6, -2);
+                let max = this.getRandomInt(2, 6);
+                for (let z = min; z < max; z++) {
+                    let cloudPart = new THREE.Mesh(
+                        new THREE.BoxGeometry(1, 1, 1),
+                        new THREE.MeshPhongMaterial({
+                            color: 0xffffff,
+                            emissive: 0xffffff,
+                            emissiveIntensity: 0.5,
+                        })
+                    );
+                    cloudPart.position.set(
+                        basePoint.x + x,
+                        basePoint.y,
+                        basePoint.z + z
+                    );
+                    cloud.push(cloudPart);
+                    this.add(cloudPart);
+                }
+            }
+            this.clouds.push({ cloud, speed });
+        }
 
         let lightSphere = new THREE.Mesh(
             new THREE.SphereGeometry(0.1, 8, 8),
@@ -48,10 +101,119 @@ class GameScene extends Scene {
         let light3 = new THREE.HemisphereLight(0xaaaaaa, 0x080820, 1.3);
         light2.position.set(0, 5, 0);
         this.add(light, light2, light3);
-
     }
 
-    update(timeStamp) {}
+    getRandomInt(min, max) {
+        min = Math.ceil(min);
+        max = Math.floor(max);
+        return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    generateChunk(chunkx, chunkz) {
+        let minx =
+            Math.floor(chunkx / this.map.CHUNK_SIZE) * this.map.CHUNK_SIZE;
+        for (let x = minx; x < minx + this.map.CHUNK_SIZE; x++) {
+            let minz =
+                Math.floor(chunkz / this.map.CHUNK_SIZE) * this.map.CHUNK_SIZE;
+            for (let z = minz; z < minz + this.map.CHUNK_SIZE; z++) {
+                let grassTexture = new THREE.TextureLoader().load(GrassTop);
+                grassTexture.magFilter = THREE.NearestFilter;
+                let grassBlock = new THREE.Mesh(
+                    new THREE.BoxGeometry(1, 1, 1),
+                    new THREE.MeshLambertMaterial({
+                        color: 0x7cbd6b,
+                        map: grassTexture,
+                    })
+                );
+                grassBlock.position.set(x + 0.5, this.#floorLevel, z + 0.5);
+                this.add(grassBlock);
+                this.map.addBlock(x + 0.5, this.#floorLevel, z + 0.5);
+                if (
+                    this.map.getBlockAt(x + 0.5, this.#floorLevel, z + 0.5) ==
+                    null
+                ) {
+                    let grassTexture = new THREE.TextureLoader().load(GrassTop);
+                    grassTexture.magFilter = THREE.NearestFilter;
+                    let grassBlock = new THREE.Mesh(
+                        new THREE.BoxGeometry(1, 1, 1),
+                        new THREE.MeshLambertMaterial({
+                            color: 0x7cbd6b,
+                            map: grassTexture,
+                        })
+                    );
+                    grassBlock.position.set(x + 0.5, this.#floorLevel, z + 0.5);
+                    this.add(grassBlock);
+                    this.map.addBlock(x + 0.5, this.#floorLevel, z + 0.5);
+                }
+            }
+        }
+    }
+
+    update(player) {
+        // build out terrain
+        let playerPos = player.camera.position;
+        // for (
+        //     let chunk_x = -this.#renderDistance;
+        //     chunk_x < this.#renderDistance;
+        //     chunk_x += 10
+        // ) {
+        //     for (
+        //         let chunk_z = -this.#renderDistance;
+        //         chunk_z < this.#renderDistance;
+        //         chunk_z += 10
+        //     ) {
+        //         let chunk_id = this.map.getChunkID(
+        //             Math.floor(playerPos.x) + chunk_x,
+        //             Math.floor(playerPos.z) + chunk_z
+        //         );
+        //         console.log(chunk_id);
+        //         if (!(chunk_id in this.map.chunks)) {
+        //             this.generateChunk(chunk_x, chunk_z);
+        //         }
+        //     }
+        // }
+
+        // move all clouds
+        for (let i = 0; i < this.clouds.length; i++) {
+            let cloudPos = this.clouds[i].cloud[0].position;
+            if (
+                cloudPos.x < playerPos.x + this.#cloudRenderDistance &&
+                cloudPos.x > playerPos.x - this.#cloudRenderDistance &&
+                cloudPos.z < playerPos.z + this.#cloudRenderDistance &&
+                cloudPos.z > playerPos.z - this.#cloudRenderDistance
+            ) {
+                for (let j = 0; j < this.clouds[i].cloud.length; j++) {
+                    let speed = this.clouds[i].speed;
+                    this.clouds[i].cloud[j].position.x += speed * 0.02;
+                }
+            } else {
+                if (cloudPos.x > playerPos.x + this.#cloudRenderDistance) {
+                    for (let j = 0; j < this.clouds[i].cloud.length; j++) {
+                        this.clouds[i].cloud[j].position.x -=
+                            this.#cloudRenderDistance * 2;
+                    }
+                }
+                if (cloudPos.x < playerPos.x - this.#cloudRenderDistance) {
+                    for (let j = 0; j < this.clouds[i].cloud.length; j++) {
+                        this.clouds[i].cloud[j].position.x +=
+                            this.#cloudRenderDistance * 2;
+                    }
+                }
+                if (cloudPos.z > playerPos.z + this.#cloudRenderDistance) {
+                    for (let j = 0; j < this.clouds[i].cloud.length; j++) {
+                        this.clouds[i].cloud[j].position.z -=
+                            this.#cloudRenderDistance * 2;
+                    }
+                }
+                if (cloudPos.z < playerPos.z - this.#cloudRenderDistance) {
+                    for (let j = 0; j < this.clouds[i].cloud.length; j++) {
+                        this.clouds[i].cloud[j].position.z +=
+                            this.#cloudRenderDistance * 2;
+                    }
+                }
+            }
+        }
+    }
 }
 
 export default GameScene;
