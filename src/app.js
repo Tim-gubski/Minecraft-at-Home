@@ -12,17 +12,36 @@ import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { GameScene } from 'scenes';
 import DIRT from './textures/dirt.png';
+import Player from './components/player.js'
+import Map from './components/map.js'
+import GrassTop from './textures/grass_block_top.png';
 
 // Initialize core ThreeJS components
 const scene = new GameScene();
 
-const camera = new PerspectiveCamera();
+// const camera = new PerspectiveCamera();
 const renderer = new WebGLRenderer({ antialias: true });
+const player = new Player();
+const map = new Map();
 
-// Set up camera
-camera.position.set(6, 3, -10);
-camera.fov = 70;
-camera.lookAt(new Vector3(0, 0, 0));
+// make large platform in map
+let grassTexture = new THREE.TextureLoader().load(GrassTop);
+grassTexture.magFilter = THREE.NearestFilter;
+for (let i = -5; i < 5; i++) {
+    for (let j = -5; j < 5; j++) {
+        let grassBlock = new THREE.Mesh(
+            new THREE.BoxGeometry(1, 1, 1),
+            new THREE.MeshLambertMaterial({
+                color: 0x7cbd6b,
+                map: grassTexture 
+            })
+        );
+        grassBlock.position.set(i + 0.5, 0.5, j + 0.5);
+        scene.add(grassBlock);
+        map.addBlock(i, 0.5, j);
+    }
+}
+console.log(map.chunks);
 
 // Set up renderer, canvas, and minor CSS adjustments
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -54,10 +73,9 @@ for (let i = 0; i < 10; i++) {
 }
 
 // Set up controls
-var controls = new PointerLockControls(camera);
 
 document.addEventListener('click', function (event) {
-    controls.lock();
+    player.controller.lock();
     addCube = event.button == 2;
     removeCube = event.button == 0;
     console.log(event);
@@ -135,64 +153,18 @@ document.addEventListener('keyup', function (event) {
     }
 });
 
-function updateMovement(timeStamp) {
-    let speed = MAX_SPEED;
-    if (keyState.shift) {
-        speed = MAX_SPEED * 1.5;
-    }
-
-    if ((keyState.w || keyState.s) && (keyState.a || keyState.d)) {
-        speed = MAX_SPEED / Math.sqrt(2);
-    }
-
-    momentum.x -= momentumDecay * momentum.x * dt;
-    momentum.y -= momentumDecay * momentum.y * dt;
-    if (keyState.w) {
-        momentum.x = speed;
-    }
-    if (keyState.s) {
-        momentum.x = -speed;
-    }
-    if (keyState.d) {
-        momentum.y = speed;
-        // controls.moveRight(speed);
-    }
-    if (keyState.a) {
-        momentum.y = -speed;
-        // controls.moveRight(-speed);
-    }
-    if (
-        (keyState.space && timeStamp - lastGrounded <= COYOTE_TIME) ||
-        timeStamp - attemptJumpTime <= COYOTE_TIME
-    ) {
-        upwardVel += playerJumpHeight;
-        keyState.space = false;
-    }
-}
-
-// setup player movement stuff
-const MAX_SPEED = 0.4;
-let momentum = new THREE.Vector2();
-const momentumDecay = 0.5;
-const playerHeight = 2;
-const playerJumpHeight = 0.6;
-const gravity = 0.025;
-const cameraYOffset = 0.75;
-let lastGrounded = 0;
-let attemptJumpTime = 0;
-const COYOTE_TIME = 100;
-let upwardVel = 0;
-let prevTime = 0;
+let prevTime = 1;
 let dt = 0;
 
-// player collision raycasters
-const collisionRaycaster = new THREE.Raycaster();
+let reticle = new THREE.Mesh(
+    new THREE.BoxGeometry(1, 1, 1),
+    new THREE.MeshPhongMaterial({ color: 0x00ff00, wireframe: true })
+);
 
 const raycaster = new THREE.Raycaster();
 let pointer = new THREE.Vector2();
 pointer.x = 0;
 pointer.y = 0;
-let lastCube = null;
 let addCube = false;
 let removeCube = false;
 // Render loop
@@ -200,128 +172,59 @@ const onAnimationFrameHandler = (timeStamp) => {
     dt = (timeStamp - prevTime) / 60;
     prevTime = timeStamp;
 
-    if (lastCube) {
-        scene.remove(lastCube);
-    }
+    scene.remove(reticle);
 
     // update the picking ray with the camera and pointer position
-    raycaster.setFromCamera(pointer, camera);
+    raycaster.setFromCamera(pointer, player.camera);
 
     // calculate objects intersecting the picking ray
     const intersects = raycaster.intersectObjects(scene.children);
-    // console.log(intersects);
     if (removeCube) {
         if (intersects.length > 0) {
-            if (intersects[0].object.name != 'floor') {
+            if (intersects[0].object.name != 'helper') {
                 scene.remove(intersects[0].object);
+                const blockPos = intersects[0].object.position;
+                map.removeBlock(blockPos.x, blockPos.y, blockPos.z);
             }
         }
         removeCube = false;
     }
 
-    // console.log(intersects);
-    let cubePreview;
-    if (!addCube) {
-        cubePreview = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshPhongMaterial({ color: 0x00ff00, wireframe: true })
-        );
-    } else {
-        let texture = new THREE.TextureLoader().load(DIRT);
-        texture.magFilter = THREE.NearestFilter;
-        cubePreview = new THREE.Mesh(
-            new THREE.BoxGeometry(1, 1, 1),
-            new THREE.MeshLambertMaterial({ map: texture })
-            // new THREE.MeshPhongMaterial({ color: 0xff0000 })
-        );
-    }
-
-    // for (let i = 0; i < intersects.length; i++) {
     if (intersects.length > 0) {
         let cubePos = intersects[0].point;
-        let toCamera = camera.position.clone().sub(cubePos);
+        let toCamera = player.camera.position.clone().sub(cubePos);
         cubePos.add(toCamera.normalize().multiplyScalar(0.1));
-        cubePreview.position.set(
-            Math.round(cubePos.x),
+        reticle.position.set(
+            Math.floor(cubePos.x) + 0.5,
             Math.floor(cubePos.y) + 0.5,
-            Math.round(cubePos.z)
+            Math.floor(cubePos.z) + 0.5
         );
+        scene.add(reticle);
 
-        scene.add(cubePreview);
-        if (!addCube) {
-            lastCube = cubePreview;
-        } else {
-            console.log(intersects);
+        if (addCube) {
+            let texture = new THREE.TextureLoader().load(DIRT);
+            texture.magFilter = THREE.NearestFilter;
+            let cubePreview = new THREE.Mesh(
+                new THREE.BoxGeometry(1, 1, 1),
+                new THREE.MeshLambertMaterial({ map: texture })
+                // new THREE.MeshPhongMaterial({ color: 0xff0000 })
+            );
+            cubePreview.position.set(
+                Math.floor(cubePos.x) + 0.5,
+                Math.floor(cubePos.y) + 0.5,
+                Math.floor(cubePos.z) + 0.5
+            );
+            scene.add(cubePreview);
+            map.addBlock(cubePreview.position.x, cubePreview.position.y, cubePreview.position.z);
             addCube = false;
         }
     }
 
-    // update player movements
-    updateMovement(timeStamp);
-    upwardVel -= gravity;
-    camera.position.y += upwardVel * dt;
-    controls.moveForward(momentum.x * dt);
-    controls.moveRight(momentum.y * dt);
+    player.updateMovement(keyState, timeStamp, dt);
+    player.updatePositions(dt, 0.1);
+    player.collide(map, timeStamp);
 
-    // collide player with scene
-    const headBlock = camera.position.clone();
-    const buttBlock = headBlock.clone();
-    buttBlock.y -= 1.5;
-    console.log(buttBlock);
-
-    let cameraDirection = new THREE.Vector3();
-    camera.getWorldDirection(cameraDirection);
-
-    collisionRaycaster.set(buttBlock, new THREE.Vector3(1, 0, 0));
-    let xIntersects = collisionRaycaster.intersectObjects(scene.children);
-    if (
-        xIntersects.length > 0 &&
-        camera.position.x + 0.5 > xIntersects[0].point.x
-    ) {
-        camera.position.x = xIntersects[0].point.x - 0.5;
-    }
-
-    collisionRaycaster.set(buttBlock, new THREE.Vector3(-1, 0, 0));
-    xIntersects = collisionRaycaster.intersectObjects(scene.children);
-    if (
-        xIntersects.length > 0 &&
-        camera.position.x - 0.5 < xIntersects[0].point.x
-    ) {
-        camera.position.x = xIntersects[0].point.x + 0.5;
-    }
-
-    collisionRaycaster.set(buttBlock, new THREE.Vector3(0, 0, 1));
-    let zIntersects = collisionRaycaster.intersectObjects(scene.children);
-    if (
-        zIntersects.length > 0 &&
-        camera.position.z + 0.5 > zIntersects[0].point.z
-    ) {
-        camera.position.z = zIntersects[0].point.z - 0.5;
-    }
-
-    collisionRaycaster.set(buttBlock, new THREE.Vector3(0, 0, -1));
-    zIntersects = collisionRaycaster.intersectObjects(scene.children);
-    if (
-        zIntersects.length > 0 &&
-        camera.position.z - 0.5 < zIntersects[0].point.z
-    ) {
-        camera.position.z = zIntersects[0].point.z + 0.5;
-    }
-
-    collisionRaycaster.set(buttBlock, new THREE.Vector3(0, -1, 0));
-    const botIntersects = collisionRaycaster.intersectObjects(scene.children);
-    if (
-        botIntersects.length > 0 &&
-        camera.position.y - playerHeight + cameraYOffset <
-            botIntersects[0].point.y + 0.5
-    ) {
-        camera.position.y =
-            botIntersects[0].point.y + playerHeight - cameraYOffset + 0.5;
-        upwardVel = 0;
-        lastGrounded = timeStamp;
-    }
-
-    renderer.render(scene, camera);
+    renderer.render(scene, player.camera);
     // scene.update && scene.update(timeStamp);
     window.requestAnimationFrame(onAnimationFrameHandler);
 };
@@ -331,8 +234,8 @@ window.requestAnimationFrame(onAnimationFrameHandler);
 const windowResizeHandler = () => {
     const { innerHeight, innerWidth } = window;
     renderer.setSize(innerWidth, innerHeight);
-    camera.aspect = innerWidth / innerHeight;
-    camera.updateProjectionMatrix();
+    player.camera.aspect = innerWidth / innerHeight;
+    player.camera.updateProjectionMatrix();
 };
 windowResizeHandler();
 window.addEventListener('resize', windowResizeHandler, false);

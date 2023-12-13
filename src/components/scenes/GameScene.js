@@ -22,7 +22,10 @@ class GameScene extends Scene {
         this.floor = new THREE.Mesh(planeGeometry, planeMaterial);
         this.floor.name = 'floor';
         this.floor.rotateX(-Math.PI / 2);
-        this.add(this.floor);
+        // this.add(this.floor);
+        const axesHelper = new THREE.AxesHelper( 5 );
+        axesHelper.name = 'helper';
+        this.add( axesHelper );
 
         let cube = new THREE.Mesh(
             new THREE.BoxGeometry(1, 1, 1),
@@ -45,6 +48,7 @@ class GameScene extends Scene {
         let light3 = new THREE.HemisphereLight(0xaaaaaa, 0x080820, 1.3);
         light2.position.set(0, 5, 0);
         this.add(light, light2, light3);
+
     }
 
     update(timeStamp) {}
