@@ -2,6 +2,7 @@ import * as Dat from 'dat.gui';
 import { Scene, Color } from 'three';
 import { Flower, Land } from 'objects';
 import { BasicLights } from 'lights';
+import * as THREE from 'three';
 
 class SeedScene extends Scene {
     constructor() {
@@ -22,7 +23,10 @@ class SeedScene extends Scene {
         const land = new Land();
         const flower = new Flower(this);
         const lights = new BasicLights();
-        this.add(land, flower, lights);
+        const floor = new THREE.Mesh(
+            new THREE.PlaneBufferGeometry(10000, 10000)
+        );
+        this.add(land, flower, lights, floor);
 
         // Populate GUI
         this.state.gui.add(this.state, 'rotationSpeed', -5, 5);
