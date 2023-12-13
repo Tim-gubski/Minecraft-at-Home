@@ -147,7 +147,6 @@ document.addEventListener('keyup', function (event) {
             keyState.space = false;
             break;
         case 'ShiftLeft':
-            attemptJumpTime = prevTime;
             keyState.shift = false;
             break;
     }

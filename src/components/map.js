@@ -33,8 +33,15 @@ class Map {
     // console.log(this.chunks[chunkID]);
     // grab block if and create block if it doesnt exist
     const blockID = this.getBlockID(x, y, z);
-    if (!(blockID in this.chunks[chunkID])) 
-      this.chunks[chunkID][blockID] = true;
+    if (!(blockID in this.chunks[chunkID])) {
+        const box = new THREE.Box3();
+        const [ bx, by, bz ] = this.#truncateBlockCoords(x, y, z);
+        box.set(
+            new THREE.Vector3(bx, by, bz),
+            new THREE.Vector3(bx + 1, by + 1, bz + 1)
+        );
+        this.chunks[chunkID][blockID] = box;
+    }
   }
 
   // sets the block flag at a location to false
@@ -70,15 +77,9 @@ class Map {
   getBlockAt(x, y, z) {
 
     if (!this.queryCoordinate(x, y, z)) return null;
-
-    const box = new THREE.Box3();
-    const [ bx, by, bz ] = this.#truncateBlockCoords(x, y, z);
-    box.set(
-        new THREE.Vector3(bx, by, bz),
-        new THREE.Vector3(bx + 1, by + 1, bz + 1)
-    );
-
-    return box;
+    const chunkID = this.getChunkID(x, z);
+    const blockID = this.getBlockID(x, y, z);
+    return this.chunks[chunkID][blockID];
   }
 }
 
