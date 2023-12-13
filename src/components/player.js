@@ -49,8 +49,8 @@ class Player {
         // camera and controller
         this.camera = new THREE.PerspectiveCamera();
         this.camera.fov = this.#FOV;
-        this.camera.position.set(0, 20, 0);
-        this.camera.lookAt(new THREE.Vector3(100, 1, 1));
+        this.camera.position.set(5, 3, 5);
+        this.camera.lookAt(new THREE.Vector3(0, 3, 0));
 
         this.controller = new PointerLockControls(this.camera);
 
@@ -147,17 +147,19 @@ class Player {
     }
 
     updatePositions(deltaT, gravity) {
-        // update and apply gravity
-        if (!this.#grounded) this.#momentum.y -= gravity * deltaT;
-        this.camera.position.y += this.#momentum.y * deltaT;
+        if (this.controller.isLocked) {
+            // update and apply gravity
+            if (!this.#grounded) this.#momentum.y -= gravity * deltaT;
+            this.camera.position.y += this.#momentum.y * deltaT;
 
-        // apply other movements
+            // apply other movements
 
-        this.controller.moveForward(this.#momentum.x * deltaT);
-        this.controller.moveRight(this.#momentum.z * deltaT);
+            this.controller.moveForward(this.#momentum.x * deltaT);
+            this.controller.moveRight(this.#momentum.z * deltaT);
 
-        // move hitbox
-        this.updateHitBox();
+            // move hitbox
+            this.updateHitBox();
+        }
     }
 
     collide(map, currentT) {

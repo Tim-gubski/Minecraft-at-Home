@@ -5,7 +5,7 @@ import GrassTop from '../../textures/grass_block_top.png';
 
 class GameScene extends Scene {
     #floorLevel = 0.5;
-    #renderDistance = 10;
+    #renderDistance = 1;
     #cloudHeight = 15;
     #cloudRenderDistance = 100;
 
@@ -45,14 +45,6 @@ class GameScene extends Scene {
         // make large platform in map
         this.generateChunk(0, 0);
 
-        // let sides = [
-        //     transparent,
-        //     transparent,
-        //     translucent,
-        //     translucent,
-        //     transparent,
-        //     transparent,
-        // ];
         // make clouds
         for (let i = 0; i < 20; i++) {
             let basePoint = new THREE.Vector3(
@@ -110,40 +102,33 @@ class GameScene extends Scene {
     }
 
     generateChunk(chunkx, chunkz) {
-        let minx =
-            Math.floor(chunkx / this.map.CHUNK_SIZE) * this.map.CHUNK_SIZE;
+        let minx = chunkx * this.map.CHUNK_SIZE;
         for (let x = minx; x < minx + this.map.CHUNK_SIZE; x++) {
-            let minz =
-                Math.floor(chunkz / this.map.CHUNK_SIZE) * this.map.CHUNK_SIZE;
+            let minz = chunkz * this.map.CHUNK_SIZE;
             for (let z = minz; z < minz + this.map.CHUNK_SIZE; z++) {
-                let grassTexture = new THREE.TextureLoader().load(GrassTop);
-                grassTexture.magFilter = THREE.NearestFilter;
-                let grassBlock = new THREE.Mesh(
-                    new THREE.BoxGeometry(1, 1, 1),
-                    new THREE.MeshLambertMaterial({
-                        color: 0x7cbd6b,
-                        map: grassTexture,
-                    })
-                );
-                grassBlock.position.set(x + 0.5, this.#floorLevel, z + 0.5);
-                this.add(grassBlock);
-                this.map.addBlock(x + 0.5, this.#floorLevel, z + 0.5);
-                if (
-                    this.map.getBlockAt(x + 0.5, this.#floorLevel, z + 0.5) ==
-                    null
+                let maxy = Math.floor(Math.sin((x * x + z * z) / 1000) * 5);
+                for (
+                    let y = this.#floorLevel;
+                    y <= this.#floorLevel + maxy;
+                    y++
                 ) {
                     let grassTexture = new THREE.TextureLoader().load(GrassTop);
                     grassTexture.magFilter = THREE.NearestFilter;
                     let grassBlock = new THREE.Mesh(
-                        new THREE.BoxGeometry(1, 1, 1),
+                        new THREE.BoxBufferGeometry(1, 1, 1),
                         new THREE.MeshLambertMaterial({
                             color: 0x7cbd6b,
                             map: grassTexture,
                         })
                     );
-                    grassBlock.position.set(x + 0.5, this.#floorLevel, z + 0.5);
+
+                    grassBlock.position.set(
+                        x + 0.5,
+                        this.#floorLevel + y,
+                        z + 0.5
+                    );
                     this.add(grassBlock);
-                    this.map.addBlock(x + 0.5, this.#floorLevel, z + 0.5);
+                    this.map.addBlock(x + 0.5, this.#floorLevel + y, z + 0.5);
                 }
             }
         }
@@ -152,26 +137,30 @@ class GameScene extends Scene {
     update(player) {
         // build out terrain
         let playerPos = player.camera.position;
-        // for (
-        //     let chunk_x = -this.#renderDistance;
-        //     chunk_x < this.#renderDistance;
-        //     chunk_x += 10
-        // ) {
-        //     for (
-        //         let chunk_z = -this.#renderDistance;
-        //         chunk_z < this.#renderDistance;
-        //         chunk_z += 10
-        //     ) {
-        //         let chunk_id = this.map.getChunkID(
-        //             Math.floor(playerPos.x) + chunk_x,
-        //             Math.floor(playerPos.z) + chunk_z
-        //         );
-        //         console.log(chunk_id);
-        //         if (!(chunk_id in this.map.chunks)) {
-        //             this.generateChunk(chunk_x, chunk_z);
-        //         }
-        //     }
-        // }
+        let currentChunk = {
+            x: Math.floor(playerPos.x / this.map.CHUNK_SIZE),
+            z: Math.floor(playerPos.z / this.map.CHUNK_SIZE),
+        };
+        for (
+            let chunk_x = currentChunk.x - this.#renderDistance;
+            chunk_x <= currentChunk.x + this.#renderDistance;
+            chunk_x++
+        ) {
+            for (
+                let chunk_z = currentChunk.z - this.#renderDistance;
+                chunk_z <= currentChunk.z + this.#renderDistance;
+                chunk_z++
+            ) {
+                let chunk_id = this.map.getChunkID(
+                    chunk_x * this.map.CHUNK_SIZE,
+                    chunk_z * this.map.CHUNK_SIZE
+                );
+
+                if (!(chunk_id in this.map.chunks)) {
+                    this.generateChunk(chunk_x, chunk_z);
+                }
+            }
+        }
 
         // move all clouds
         for (let i = 0; i < this.clouds.length; i++) {
