@@ -15,7 +15,7 @@ class Player {
   // movement constants
   #MAX_SPEED = 0.4;
   #COYOTE_TIME = 5;
-  #MOMENTUM_DECAY = 0.5j;
+  #MOMENTUM_DECAY = 0.5;
 
   // movement variables
   #jumpHeight = 1.1;
