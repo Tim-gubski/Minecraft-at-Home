@@ -220,7 +220,7 @@ const onAnimationFrameHandler = (timeStamp) => {
     }
 
     player.updateMovement(keyState, timeStamp, dt);
-    player.updatePositions(dt, 0.1);
+    player.updatePositions(dt, 0.21);
     player.collide(map, timeStamp);
 
     renderer.render(scene, player.camera);

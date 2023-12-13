@@ -15,10 +15,10 @@ class Player {
   // movement constants
   #MAX_SPEED = 0.4;
   #COYOTE_TIME = 5;
-  #MOMENTUM_DECAY = 0.75;
+  #MOMENTUM_DECAY = 0.5j;
 
   // movement variables
-  #jumpHeight = 0.8;
+  #jumpHeight = 1.1;
   #momentum = new THREE.Vector3();
   #lastGrounded = 0;
   #lastAttemptedJump = 0;
@@ -36,7 +36,7 @@ class Player {
     // camera and controller
     this.camera = new THREE.PerspectiveCamera();
     this.camera.fov = this.#FOV;
-    this.camera.position.set(0, 20, 0);
+    this.camera.position.set(0, 100, 0);
     this.camera.lookAt(new THREE.Vector3(1, 1, 1));
 
     this.controller = new PointerLockControls(this.camera);
