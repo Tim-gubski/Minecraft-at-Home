@@ -32,9 +32,26 @@ document.body.style.margin = 0; // Removes margin around page
 document.body.style.overflow = 'hidden'; // Fix scrolling
 document.body.appendChild(canvas);
 
-// let hotBar = [];
-// for (let i = 0; i < 9; i++) {
-//   let frame = document.createElement('div');
+let hotBar = [];
+let activeItem = 0;
+for (let i = 0; i < 10; i++) {
+    let frame = document.createElement('img');
+    frame.src = DIRT;
+    frame.style.width = '50px';
+    frame.style.height = '50px';
+    if (activeItem === i) {
+        frame.style.border = '5px solid white';
+    } else {
+        frame.style.border = '5px solid gray';
+    }
+    frame.style.position = 'absolute';
+    frame.style.left = '50%';
+    frame.style.transform = `translateX(${(5 - i) * 60 - 60}px)`;
+    frame.style.bottom = '0px';
+    frame.style.zIndex = '100';
+    hotBar.push(frame);
+    document.body.append(frame);
+}
 
 // Set up controls
 var controls = new PointerLockControls(camera);
@@ -44,6 +61,21 @@ document.addEventListener('click', function (event) {
     addCube = event.button == 2;
     removeCube = event.button == 0;
     console.log(event);
+});
+
+window.addEventListener('wheel', function (event) {
+    if (event.deltaY < 0) {
+        activeItem = (activeItem + 1) % 10;
+    } else {
+        activeItem = (activeItem - 1 + 10) % 10;
+    }
+    hotBar.forEach((frame, i) => {
+        if (activeItem === i) {
+            frame.style.border = '5px solid white';
+        } else {
+            frame.style.border = '5px solid gray';
+        }
+    });
 });
 
 // keyboard stuff
@@ -234,12 +266,50 @@ const onAnimationFrameHandler = (timeStamp) => {
     // collide player with scene
     const headBlock = camera.position.clone();
     const buttBlock = headBlock.clone();
-    buttBlock.y -= 1;
+    buttBlock.y -= 1.5;
+    console.log(buttBlock);
 
-    // collide floor
+    let cameraDirection = new THREE.Vector3();
+    camera.getWorldDirection(cameraDirection);
+
+    collisionRaycaster.set(buttBlock, new THREE.Vector3(1, 0, 0));
+    let xIntersects = collisionRaycaster.intersectObjects(scene.children);
+    if (
+        xIntersects.length > 0 &&
+        camera.position.x + 0.5 > xIntersects[0].point.x
+    ) {
+        camera.position.x = xIntersects[0].point.x - 0.5;
+    }
+
+    collisionRaycaster.set(buttBlock, new THREE.Vector3(-1, 0, 0));
+    xIntersects = collisionRaycaster.intersectObjects(scene.children);
+    if (
+        xIntersects.length > 0 &&
+        camera.position.x - 0.5 < xIntersects[0].point.x
+    ) {
+        camera.position.x = xIntersects[0].point.x + 0.5;
+    }
+
+    collisionRaycaster.set(buttBlock, new THREE.Vector3(0, 0, 1));
+    let zIntersects = collisionRaycaster.intersectObjects(scene.children);
+    if (
+        zIntersects.length > 0 &&
+        camera.position.z + 0.5 > zIntersects[0].point.z
+    ) {
+        camera.position.z = zIntersects[0].point.z - 0.5;
+    }
+
+    collisionRaycaster.set(buttBlock, new THREE.Vector3(0, 0, -1));
+    zIntersects = collisionRaycaster.intersectObjects(scene.children);
+    if (
+        zIntersects.length > 0 &&
+        camera.position.z - 0.5 < zIntersects[0].point.z
+    ) {
+        camera.position.z = zIntersects[0].point.z + 0.5;
+    }
+
     collisionRaycaster.set(buttBlock, new THREE.Vector3(0, -1, 0));
     const botIntersects = collisionRaycaster.intersectObjects(scene.children);
-
     if (
         botIntersects.length > 0 &&
         camera.position.y - playerHeight + cameraYOffset <
