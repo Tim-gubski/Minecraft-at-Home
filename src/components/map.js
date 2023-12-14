@@ -15,6 +15,7 @@ class Map {
         return `${chunkX} ${chunkZ}`;
     }
 
+	// return the chunk coordinates of this postion
     getChunkCoords(x, z) {
         return [
             Math.floor(x / this.CHUNK_SIZE),
@@ -40,13 +41,11 @@ class Map {
     addBlock(x, y, z) {
         // grab chunkid and create chunk if it doesnt exist
         const chunkID = this.getChunkID(x, z);
-        // console.log(chunkID);
         if (!(chunkID in this.chunks)) this.chunks[chunkID] = {};
-
-        // console.log(this.chunks[chunkID]);
         // grab block if and create block if it doesnt exist
         const blockID = this.getBlockID(x, y, z);
         if (!(blockID in this.chunks[chunkID])) {
+			// make a local and world block for the map
             const local = new THREE.Box3();
             const [bx, by, bz] = this.#truncateBlockCoords(x, y, z);
             local.set(
@@ -74,8 +73,6 @@ class Map {
                 localBox: local,
                 worldBox: world,
             };
-
-            // this.chunks[chunkID][blockID] = box;
         }
     }
 
@@ -97,12 +94,8 @@ class Map {
     // return wether a block exists in a spot
     queryCoordinate(x, y, z) {
         const chunkID = this.getChunkID(x, z);
-        // console.log(chunkID);
         if (!(chunkID in this.chunks)) return false;
-
         const blockID = this.getBlockID(x, y, z);
-        // console.log(blockID);
-        // console.log(this.chunks[chunkID]);
         if (!(blockID in this.chunks[chunkID])) return false;
 
         return true;

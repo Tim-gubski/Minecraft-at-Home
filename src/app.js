@@ -6,15 +6,11 @@
  * handles window resizes.
  *
  */
-import { WebGLRenderer, PerspectiveCamera, Vector3 } from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { GameScene } from 'scenes';
-import DIRT from './textures/dirt.png';
+import { WebGLRenderer } from 'three';
+import GameScene from './components/GameScene.js';
 import Player from './components/player.js';
 import Map from './components/map.js';
-import GrassTop from './textures/grass_block_top.png';
 
 // const camera = new PerspectiveCamera();
 const renderer = new WebGLRenderer({ antialias: true });
@@ -28,9 +24,6 @@ console.log(map.chunks);
 
 // Set up renderer, canvas, and minor CSS adjustments
 renderer.setPixelRatio(window.devicePixelRatio);
-// renderer.castShadow = true;
-// renderer.updateShadowMap = true;
-// renderer.shadowMap.enabled = true;
 const canvas = renderer.domElement;
 canvas.style.display = 'block'; // Removes padding below canvas
 document.body.style.margin = 0; // Removes margin around page
@@ -48,6 +41,7 @@ document.addEventListener('click', function (event) {
     }
 });
 
+// update hotbar on scroll wheel
 window.addEventListener('wheel', function (event) {
     if (event.deltaY < 0) {
         player.activeItem = (player.activeItem + 1) % 10;
@@ -57,7 +51,7 @@ window.addEventListener('wheel', function (event) {
     player.updateHotBar();
 });
 
-// keyboard stuff
+// movement stuff
 let keyState = {
     w: false,
     a: false,
@@ -67,6 +61,7 @@ let keyState = {
     shift: false,
 };
 
+// keypresses for movement and hotbar switching
 document.addEventListener('keydown', function (event) {
     console.log(event);
     switch (event.code) {
@@ -122,6 +117,7 @@ document.addEventListener('keydown', function (event) {
     player.updateHotBar();
 });
 
+// turn off movement on keyup events
 document.addEventListener('keyup', function (event) {
     switch (event.code) {
         case 'KeyW':
@@ -145,22 +141,16 @@ document.addEventListener('keyup', function (event) {
     }
 });
 
-let prevTime = 1;
-let dt = 0;
-
 let reticle = new THREE.Mesh(
     new THREE.BoxGeometry(1, 1, 1),
     new THREE.MeshPhongMaterial({ color: 0x00ff00, wireframe: true })
 );
-
 const raycaster = new THREE.Raycaster();
 let addCube = false;
 let removeCube = false;
+
 // Render loop
 const onAnimationFrameHandler = (timeStamp) => {
-    dt = (timeStamp - prevTime) / 60;
-    prevTime = timeStamp;
-
     scene.remove(reticle);
 
     // update the picking ray with the camera and pointer position
@@ -196,7 +186,9 @@ const onAnimationFrameHandler = (timeStamp) => {
         removeCube = false;
     }
 
+	// for building blocks
     if (intersects.length > 0 && intersects[0].distance < 10) {
+		// add reticle display
         let cubePos = intersects[0].point;
         let toCamera = player.camera.position.clone().sub(cubePos);
         cubePos.add(toCamera.normalize().multiplyScalar(0.1));
@@ -207,7 +199,9 @@ const onAnimationFrameHandler = (timeStamp) => {
         );
         scene.add(reticle);
 
+		// add cube while building
         if (addCube) {
+			// load correct texture
             let texture = new THREE.TextureLoader().load(
                 player.hotBar[player.activeItem].texture
             );
@@ -242,6 +236,7 @@ const onAnimationFrameHandler = (timeStamp) => {
                 cubePreview.position.z
             );
 
+			// add lighting to blocks with light
             if (player.hotBar[player.activeItem].isGlowing) {
                 let light = new THREE.PointLight(0xffffff, 1, 8);
                 light.position.set(
@@ -255,14 +250,13 @@ const onAnimationFrameHandler = (timeStamp) => {
     }
     addCube = false;
 
-    player.updateMovement(keyState, timeStamp, dt);
+    player.updateMovement(keyState, timeStamp, 0.2);
     player.updatePositions(0.2, 0.5);
     player.collide(map, timeStamp);
     scene.update(player);
 
     renderer.render(scene, player.camera);
 
-    // scene.update && scene.update(timeStamp);
     window.requestAnimationFrame(onAnimationFrameHandler);
 };
 window.requestAnimationFrame(onAnimationFrameHandler);
