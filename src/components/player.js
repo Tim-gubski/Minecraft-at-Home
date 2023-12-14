@@ -29,7 +29,7 @@ class Player {
     #SHIFT_MOD = 2;
     #COYOTE_TIME = 150;
     #FORGIVENESS_TIME = 300;
-    #MOMENTUM_DECAY = 0.5;
+    #MOMENTUM_DECAY = 0.8;
 
     // movement variables
     #jumpHeight = 0.8;
@@ -148,6 +148,9 @@ class Player {
         this.#momentum.x -= this.#momentum.x * this.#MOMENTUM_DECAY * deltaT;
         this.#momentum.z -= this.#momentum.z * this.#MOMENTUM_DECAY * deltaT;
 
+		if (Math.abs(this.#momentum.x) < this.#EPS) this.#momentum.x = 0;
+		if (Math.abs(this.#momentum.z) < this.#EPS) this.#momentum.z = 0;
+
         // move according to input
         if (this.#grounded) {
             if (moveKeys.w) this.#momentum.x = modifiedSpeed;
@@ -159,6 +162,11 @@ class Player {
             if (moveKeys.s) this.#momentum.x += -modifiedSpeed;
             if (moveKeys.d) this.#momentum.z += modifiedSpeed;
             if (moveKeys.a) this.#momentum.z += -modifiedSpeed;
+			this.#momentum.x = Math.max(this.#momentum.x, -this.#MAX_SPEED * 2);
+			this.#momentum.x = Math.min(this.#momentum.x, this.#MAX_SPEED * 2);
+
+			this.#momentum.y = Math.max(this.#momentum.y, -this.#MAX_SPEED * 2);
+			this.#momentum.y = Math.min(this.#momentum.y, this.#MAX_SPEED * 2);
         }
 
         // jumping logic
