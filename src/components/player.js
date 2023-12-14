@@ -29,7 +29,7 @@ class Player {
     #SHIFT_MOD = 2;
     #COYOTE_TIME = 150;
     #FORGIVENESS_TIME = 300;
-    #MOMENTUM_DECAY = 0.8;
+    #MOMENTUM_DECAY = 0.9;
 
     // movement variables
     #jumpHeight = 0.8;
