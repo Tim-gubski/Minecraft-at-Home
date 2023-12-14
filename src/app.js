@@ -185,7 +185,7 @@ const onAnimationFrameHandler = (timeStamp) => {
     addCube = false;
 
     player.updateMovement(keyState, timeStamp, dt);
-    player.updatePositions(dt, 0.21);
+    player.updatePositions(0.3, 0.25);
     player.collide(map, timeStamp);
     scene.update(player);
 

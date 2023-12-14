@@ -107,6 +107,7 @@ class GameScene extends Scene {
             let minz = chunkz * this.map.CHUNK_SIZE;
             for (let z = minz; z < minz + this.map.CHUNK_SIZE; z++) {
                 let maxy = Math.floor(Math.sin((x * x + z * z) / 1000) * 5);
+                // let maxy = this.perlin2d(x, z);
                 for (
                     let y = this.#floorLevel;
                     y <= this.#floorLevel + maxy;
@@ -122,13 +123,9 @@ class GameScene extends Scene {
                         })
                     );
 
-                    grassBlock.position.set(
-                        x + 0.5,
-                        this.#floorLevel + y,
-                        z + 0.5
-                    );
+                    grassBlock.position.set(x + 0.5, y, z + 0.5);
                     this.add(grassBlock);
-                    this.map.addBlock(x + 0.5, this.#floorLevel + y, z + 0.5);
+                    this.map.addBlock(x + 0.5, y, z + 0.5);
                 }
             }
         }
