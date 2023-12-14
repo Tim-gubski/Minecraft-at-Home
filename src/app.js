@@ -28,6 +28,9 @@ console.log(map.chunks);
 
 // Set up renderer, canvas, and minor CSS adjustments
 renderer.setPixelRatio(window.devicePixelRatio);
+// renderer.castShadow = true;
+// renderer.updateShadowMap = true;
+// renderer.shadowMap.enabled = true;
 const canvas = renderer.domElement;
 canvas.style.display = 'block'; // Removes padding below canvas
 document.body.style.margin = 0; // Removes margin around page
@@ -36,26 +39,22 @@ document.body.appendChild(canvas);
 
 // Set up controls
 document.addEventListener('click', function (event) {
-    player.controller.lock();
-    addCube = event.button == 2;
-    removeCube = event.button == 0;
-    console.log(event);
+    if (player.controller.isLocked) {
+        addCube = event.button == 2;
+        removeCube = event.button == 0;
+        console.log(event);
+    } else {
+        player.controller.lock();
+    }
 });
 
 window.addEventListener('wheel', function (event) {
-    if (event.deltaY > 0) {
+    if (event.deltaY < 0) {
         player.activeItem = (player.activeItem + 1) % 10;
     } else {
         player.activeItem = (player.activeItem - 1 + 10) % 10;
     }
-    player.hotBar.forEach((frame, i) => {
-        if (player.activeItem === i) {
-            // console.log(frame, Player.unselectedBorder);
-            frame.element.style.border = player.selectedBorder;
-        } else {
-            frame.element.style.border = player.unselectedBorder;
-        }
-    });
+    player.updateHotBar();
 });
 
 // keyboard stuff
@@ -69,6 +68,7 @@ let keyState = {
 };
 
 document.addEventListener('keydown', function (event) {
+    console.log(event);
     switch (event.code) {
         case 'KeyW':
             keyState.w = true;
@@ -88,7 +88,38 @@ document.addEventListener('keydown', function (event) {
         case 'ShiftLeft':
             keyState.shift = true;
             break;
+        case 'Digit1':
+            player.activeItem = 9;
+            break;
+        case 'Digit2':
+            player.activeItem = 8;
+            break;
+        case 'Digit3':
+            player.activeItem = 7;
+            break;
+        case 'Digit4':
+            player.activeItem = 6;
+            break;
+        case 'Digit5':
+            player.activeItem = 5;
+            break;
+        case 'Digit6':
+            player.activeItem = 4;
+            break;
+        case 'Digit7':
+            player.activeItem = 3;
+            break;
+        case 'Digit8':
+            player.activeItem = 2;
+            break;
+        case 'Digit9':
+            player.activeItem = 1;
+            break;
+        case 'Digit0':
+            player.activeItem = 0;
+            break;
     }
+    player.updateHotBar();
 });
 
 document.addEventListener('keyup', function (event) {
@@ -139,10 +170,27 @@ const onAnimationFrameHandler = (timeStamp) => {
     const intersects = raycaster.intersectObjects(scene.children);
     if (removeCube) {
         if (intersects.length > 0) {
-            if (intersects[0].object.name != 'helper') {
+            if (intersects[0].object.name != 'floor') {
                 scene.remove(intersects[0].object);
                 const blockPos = intersects[0].object.position;
                 map.removeBlock(blockPos.x, blockPos.y, blockPos.z);
+            } else {
+                let instanceId = intersects[0].instanceId;
+                let dissapear = new THREE.Matrix4();
+                dissapear.set(0, -100, 0);
+                let boxMatrix = new THREE.Matrix4();
+                intersects[0].object.getMatrixAt(instanceId, boxMatrix);
+                let boxPos = new THREE.Vector3().setFromMatrixPosition(
+                    boxMatrix
+                );
+                map.removeBlock(
+                    Math.floor(boxPos.x),
+                    Math.floor(boxPos.y),
+                    Math.floor(boxPos.z)
+                );
+
+                intersects[0].object.setMatrixAt(instanceId, dissapear);
+                intersects[0].object.instanceMatrix.needsUpdate = true;
             }
         }
         removeCube = false;
@@ -166,8 +214,21 @@ const onAnimationFrameHandler = (timeStamp) => {
             texture.magFilter = THREE.NearestFilter;
             let cubePreview = new THREE.Mesh(
                 new THREE.BoxGeometry(1, 1, 1),
-                new THREE.MeshLambertMaterial({ map: texture })
-                // new THREE.MeshPhongMaterial({ color: 0xff0000 })
+                new THREE.MeshPhongMaterial({
+                    map: texture,
+                    emissive: player.hotBar[player.activeItem].isGlowing
+                        ? 0xffe600
+                        : 0x000000,
+                    emissiveIntensity: 0.5,
+                    emissiveMap: [
+                        texture,
+                        texture,
+                        texture,
+                        texture,
+                        texture,
+                        texture,
+                    ],
+                })
             );
             cubePreview.position.set(
                 Math.floor(cubePos.x) + 0.5,
@@ -180,16 +241,27 @@ const onAnimationFrameHandler = (timeStamp) => {
                 cubePreview.position.y,
                 cubePreview.position.z
             );
+
+            if (player.hotBar[player.activeItem].isGlowing) {
+                let light = new THREE.PointLight(0xffffff, 1, 8);
+                light.position.set(
+                    cubePreview.position.x,
+                    cubePreview.position.y,
+                    cubePreview.position.z
+                );
+                scene.add(light);
+            }
         }
     }
     addCube = false;
 
     player.updateMovement(keyState, timeStamp, dt);
-    player.updatePositions(0.3, 0.25);
+    player.updatePositions(0.2, 0.5);
     player.collide(map, timeStamp);
     scene.update(player);
 
     renderer.render(scene, player.camera);
+
     // scene.update && scene.update(timeStamp);
     window.requestAnimationFrame(onAnimationFrameHandler);
 };

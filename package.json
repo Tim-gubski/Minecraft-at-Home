@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "dat.gui": "^0.7.7",
+    "perlin-noise": "^0.0.1",
     "three": "^0.133.1",
     "three-addons": "^1.2.0",
     "three-obj-loader": "^1.1.3",

@@ -5,7 +5,12 @@ import acacia_planks from '../textures/acacia_planks.png';
 import oak_planks from '../textures/oak_planks.png';
 import stone from '../textures/stone.png';
 import dark_oak_planks from '../textures/dark_oak_planks.png';
+import glowstone from '../textures/glowstone.png';
 import cobblestone from '../textures/cobblestone.png';
+import diamond_block from '../textures/diamond_block.png';
+import stone_bricks from '../textures/stone_bricks.png';
+import spruce_planks from '../textures/spruce_planks.png';
+
 import crosshair_img from '../textures/crosshair.png';
 
 class Player {
@@ -16,27 +21,30 @@ class Player {
     #CAMERA_Y_OFFSET = 1.5;
     #WIDTH = 0.75;
     #HEIGHT = 2;
-    #EPS = 0.075;
+    #EPS = 0.01;
     #SIZE = new THREE.Vector3(this.#WIDTH, this.#HEIGHT, this.#WIDTH);
 
     // movement constants
-    #MAX_SPEED = 0.4;
-    #COYOTE_TIME = 5;
+    #MAX_SPEED = 0.7;
+    #SHIFT_MOD = 2;
+    #COYOTE_TIME = 150;
+    #FORGIVENESS_TIME = 300;
     #MOMENTUM_DECAY = 0.5;
 
     // movement variables
-    #jumpHeight = 1.1;
+    #jumpHeight = 0.8;
+    #jumps = 1;
     #momentum = new THREE.Vector3();
     #lastGrounded = 0;
     #lastAttemptedJump = 0;
     #grounded = false;
 
     // hot bar variables
-    imgSize = 50;
+    imgSize = 70;
     unselectedBorder = '5px solid gray';
     selectedBorder = '5px solid white';
     borderWidth = 5;
-    boxWidth = 60;
+    boxWidth = 80;
 
     // collision variables
     collisionRaycaster = new THREE.Raycaster();
@@ -49,19 +57,25 @@ class Player {
         // camera and controller
         this.camera = new THREE.PerspectiveCamera();
         this.camera.fov = this.#FOV;
-        this.camera.position.set(5, 3, 5);
+        this.camera.position.set(5, 10, 5);
         this.camera.lookAt(new THREE.Vector3(0, 3, 0));
+
+        this.prevPosition = this.camera.position.clone();
 
         this.controller = new PointerLockControls(this.camera);
 
         // hotbar
         let textures = [
+            diamond_block,
+            glowstone,
             dirt,
-            acacia_planks,
-            oak_planks,
+            stone_bricks,
+            cobblestone,
             stone,
             dark_oak_planks,
-            cobblestone,
+            oak_planks,
+            acacia_planks,
+            spruce_planks,
         ];
 
         this.hotBar = [];
@@ -69,6 +83,7 @@ class Player {
         for (let i = 0; i < 10; i++) {
             let frame = document.createElement('img');
             frame.src = textures[i % textures.length];
+            frame.style.imageRendering = 'pixelated';
             frame.style.width = this.imgSize + 'px';
             frame.style.height = this.imgSize + 'px';
             if (this.activeItem == i) {
@@ -86,6 +101,7 @@ class Player {
             this.hotBar.push({
                 element: frame,
                 texture: textures[i % textures.length],
+                isGlowing: textures[i % textures.length] == glowstone,
             });
             document.body.append(frame);
         }
@@ -106,34 +122,58 @@ class Player {
         return this;
     }
 
+    updateHotBar() {
+        this.hotBar.forEach((frame, i) => {
+            if (this.activeItem === i) {
+                // console.log(frame, Player.unselectedBorder);
+                frame.element.style.border = this.selectedBorder;
+            } else {
+                frame.element.style.border = this.unselectedBorder;
+            }
+        });
+    }
+
     updateMovement(moveKeys, currentT, deltaT) {
         // find current speed to move
         let modifiedSpeed = this.#MAX_SPEED;
-        if (moveKeys.shift) modifiedSpeed *= 0.5;
+        if (moveKeys.shift) modifiedSpeed = this.#MAX_SPEED * this.#SHIFT_MOD;
         if ((moveKeys.w || moveKeys.s) && (moveKeys.a || moveKeys.d)) {
             modifiedSpeed = modifiedSpeed / Math.sqrt(2);
         }
 
-        // decay speed (coasting effect)
         this.#grounded = currentT - this.#lastGrounded <= this.#COYOTE_TIME;
 
-        if (this.#grounded) modifiedSpeed *= 0.5;
+        // decay speed (coasting effect)
+        if (!this.#grounded) modifiedSpeed *= 0.25;
         this.#momentum.x -= this.#momentum.x * this.#MOMENTUM_DECAY * deltaT;
         this.#momentum.z -= this.#momentum.z * this.#MOMENTUM_DECAY * deltaT;
 
         // move according to input
-        if (moveKeys.w) this.#momentum.x = modifiedSpeed;
-        if (moveKeys.s) this.#momentum.x = -modifiedSpeed;
-        if (moveKeys.d) this.#momentum.z = modifiedSpeed;
-        if (moveKeys.a) this.#momentum.z = -modifiedSpeed;
+        if (this.#grounded) {
+            if (moveKeys.w) this.#momentum.x = modifiedSpeed;
+            if (moveKeys.s) this.#momentum.x = -modifiedSpeed;
+            if (moveKeys.d) this.#momentum.z = modifiedSpeed;
+            if (moveKeys.a) this.#momentum.z = -modifiedSpeed;
+        } else {
+            if (moveKeys.w) this.#momentum.x += modifiedSpeed;
+            if (moveKeys.s) this.#momentum.x += -modifiedSpeed;
+            if (moveKeys.d) this.#momentum.z += modifiedSpeed;
+            if (moveKeys.a) this.#momentum.z += -modifiedSpeed;
+        }
 
-        // jupming logic
-        if (
-            (moveKeys.space && this.#grounded <= this.#COYOTE_TIME) ||
-            currentT - this.#lastAttemptedJump <= this.#COYOTE_TIME
-        ) {
-            this.#momentum.y += this.#jumpHeight;
-            moveKeys.space = false;
+        // jumping logic
+        if (moveKeys.space && this.#jumps > 0) {
+            this.#lastAttemptedJump = currentT;
+
+            if (
+                this.#grounded ||
+                this.#lastAttemptedJump - this.#lastGrounded <=
+                    this.#FORGIVENESS_TIME
+            ) {
+                this.#momentum.y += this.#jumpHeight;
+                moveKeys.space = false;
+                this.#jumps = 0;
+            }
         }
     }
 
@@ -148,12 +188,12 @@ class Player {
 
     updatePositions(deltaT, gravity) {
         if (this.controller.isLocked) {
+            this.prevPosition = this.camera.position.clone();
             // update and apply gravity
             if (!this.#grounded) this.#momentum.y -= gravity * deltaT;
             this.camera.position.y += this.#momentum.y * deltaT;
 
             // apply other movements
-
             this.controller.moveForward(this.#momentum.x * deltaT);
             this.controller.moveRight(this.#momentum.z * deltaT);
 
@@ -164,7 +204,89 @@ class Player {
 
     collide(map, currentT) {
         let blocks;
-        let collided = [];
+
+        const blockSize = map.BLOCK_SIZE;
+
+        let playerPosFloored = new THREE.Vector3(
+            Math.floor(this.camera.position.x),
+            Math.floor(this.camera.position.y),
+            Math.floor(this.camera.position.z)
+        );
+        let adjacentBlocks = [];
+
+        for (let x = -1; x <= 1; x++) {
+            for (let z = -1; z <= 1; z++) {
+                let block = map.getBlockAt(
+                    playerPosFloored.x + x,
+                    playerPosFloored.y,
+                    playerPosFloored.z + z
+                );
+                if (block != null) {
+                    adjacentBlocks.push(block);
+                }
+            }
+        }
+
+        for (let block of adjacentBlocks) {
+            let collided =
+                this.camera.position.x >
+                    block.worldBox.min.x - this.#WIDTH / 2 &&
+                this.camera.position.x <
+                    block.worldBox.max.x + this.#WIDTH / 2 &&
+                this.camera.position.z >
+                    block.worldBox.min.z - this.#WIDTH / 2 &&
+                this.camera.position.z <
+                    block.worldBox.max.z + this.#WIDTH / 2 &&
+                this.camera.position.y <
+                    block.worldBox.max.y + this.#WIDTH / 2 &&
+                this.camera.position.y > block.worldBox.min.y - this.#WIDTH / 2;
+
+            if (collided) {
+                let velocity = this.camera.position
+                    .clone()
+                    .sub(this.prevPosition);
+
+                if (Math.abs(velocity.x) > Math.abs(velocity.z)) {
+                    this.camera.position.x -= velocity.x;
+                    let stillColliding =
+                        this.camera.position.x >
+                            block.worldBox.min.x - this.#WIDTH / 2 &&
+                        this.camera.position.x <
+                            block.worldBox.max.x + this.#WIDTH / 2 &&
+                        this.camera.position.z >
+                            block.worldBox.min.z - this.#WIDTH / 2 &&
+                        this.camera.position.z <
+                            block.worldBox.max.z + this.#WIDTH / 2 &&
+                        this.camera.position.y <
+                            block.worldBox.max.y + this.#WIDTH / 2 &&
+                        this.camera.position.y >
+                            block.worldBox.min.y - this.#WIDTH / 2;
+
+                    if (stillColliding) {
+                        this.camera.position.z -= velocity.z;
+                    }
+                } else {
+                    this.camera.position.z -= velocity.z;
+                    let stillColliding =
+                        this.camera.position.x >
+                            block.worldBox.min.x - this.#WIDTH / 2 &&
+                        this.camera.position.x <
+                            block.worldBox.max.x + this.#WIDTH / 2 &&
+                        this.camera.position.z >
+                            block.worldBox.min.z - this.#WIDTH / 2 &&
+                        this.camera.position.z <
+                            block.worldBox.max.z + this.#WIDTH / 2 &&
+                        this.camera.position.y <
+                            block.worldBox.max.y + this.#WIDTH / 2 &&
+                        this.camera.position.y >
+                            block.worldBox.min.y - this.#WIDTH / 2;
+
+                    if (stillColliding) {
+                        this.camera.position.x -= velocity.x;
+                    }
+                }
+            }
+        }
 
         // floor collision (check corners of hitbox)
         const yfl = new THREE.Vector3(
@@ -196,123 +318,91 @@ class Player {
 
         for (let block of blocks) {
             if (block == null) continue;
-            if (this.hitBox.min.y <= block.max.y + this.#EPS) {
-                const diff = block.max.y - this.hitBox.min.y;
-                this.camera.position.y += diff + this.#EPS;
+            if (
+                this.camera.position.y - this.#CAMERA_Y_OFFSET <=
+                block.localBox.max.y + this.#EPS
+            ) {
+                this.camera.position.y =
+                    block.localBox.max.y + this.#CAMERA_Y_OFFSET + this.#EPS;
                 this.#momentum.y = 0;
                 this.#lastGrounded = currentT;
-                this.updateHitBox();
+                this.#jumps = 1;
                 break;
             }
         }
 
-        // x collisions
-        const xfl = new THREE.Vector3(
-            this.hitBox.max.x + 0.25,
-            this.hitBox.min.y,
-            this.hitBox.min.z
-        );
-        const xfr = new THREE.Vector3(
-            this.hitBox.max.x + 0.25,
-            this.hitBox.min.y,
-            this.hitBox.max.z
+        let playerFeetFloored = new THREE.Vector3(
+            Math.floor(this.camera.position.x),
+            Math.floor(this.camera.position.y - this.#CAMERA_Y_OFFSET),
+            Math.floor(this.camera.position.z)
         );
 
-        blocks = [
-            map.getBlockAt(xfl.x, xfl.y, xfl.z),
-            map.getBlockAt(xfr.x, xfr.y, xfr.z),
-        ];
+        adjacentBlocks = [];
 
-        for (let block of blocks) {
-            if (block == null || collided.includes(block.id)) continue;
-            if (this.hitBox.max.x >= block.min.x + this.#EPS) {
-                const diff = block.min.x - this.hitBox.max.x;
-                this.camera.position.x += diff + this.#EPS;
-                this.updateHitBox();
-                collided.push(block.id);
-                break;
+        for (let x = -1; x <= 1; x++) {
+            for (let z = -1; z <= 1; z++) {
+                let block = map.getBlockAt(
+                    playerFeetFloored.x + x,
+                    playerFeetFloored.y,
+                    playerFeetFloored.z + z
+                );
+                if (block != null) {
+                    adjacentBlocks.push(block);
+                }
             }
         }
 
-        const xbl = new THREE.Vector3(
-            this.hitBox.min.x - 0.25,
-            this.hitBox.min.y,
-            this.hitBox.min.z
-        );
-        const xbr = new THREE.Vector3(
-            this.hitBox.min.x - 0.25,
-            this.hitBox.min.y,
-            this.hitBox.max.z
-        );
+        for (let block of adjacentBlocks) {
+            if (
+                block.worldBox.max.y <
+                this.camera.position.y - this.#CAMERA_Y_OFFSET
+            )
+                continue;
+            let collided =
+                this.camera.position.x >
+                    block.worldBox.min.x - this.#WIDTH / 2 &&
+                this.camera.position.x <
+                    block.worldBox.max.x + this.#WIDTH / 2 &&
+                this.camera.position.z >
+                    block.worldBox.min.z - this.#WIDTH / 2 &&
+                this.camera.position.z < block.worldBox.max.z + this.#WIDTH / 2;
 
-        blocks = [
-            map.getBlockAt(xbl.x, xbl.y, xbl.z),
-            map.getBlockAt(xbr.x, xbr.y, xbr.z),
-        ];
+            if (collided) {
+                let velocity = this.camera.position
+                    .clone()
+                    .sub(this.prevPosition);
 
-        for (let block of blocks) {
-            if (block == null || collided.includes(block.id)) continue;
-            if (this.hitBox.min.x <= block.max.x - this.#EPS) {
-                const diff = block.max.x - this.hitBox.min.x;
-                this.camera.position.x += diff - this.#EPS;
-                this.updateHitBox();
-                collided.push(block.id);
-                break;
-            }
-        }
+                if (Math.abs(velocity.x) > Math.abs(velocity.z)) {
+                    this.camera.position.x -= velocity.x;
+                    let stillColliding =
+                        this.camera.position.x >
+                            block.worldBox.min.x - this.#WIDTH / 2 &&
+                        this.camera.position.x <
+                            block.worldBox.max.x + this.#WIDTH / 2 &&
+                        this.camera.position.z >
+                            block.worldBox.min.z - this.#WIDTH / 2 &&
+                        this.camera.position.z <
+                            block.worldBox.max.z + this.#WIDTH / 2;
 
-        // z collisions
-        const zfl = new THREE.Vector3(
-            this.hitBox.min.x,
-            this.hitBox.min.y,
-            this.hitBox.max.z + 0.25
-        );
-        const zfr = new THREE.Vector3(
-            this.hitBox.max.x,
-            this.hitBox.min.y,
-            this.hitBox.max.z + 0.25
-        );
+                    if (stillColliding) {
+                        this.camera.position.z -= velocity.z;
+                    }
+                } else {
+                    this.camera.position.z -= velocity.z;
+                    let stillColliding =
+                        this.camera.position.x >
+                            block.worldBox.min.x - this.#WIDTH / 2 &&
+                        this.camera.position.x <
+                            block.worldBox.max.x + this.#WIDTH / 2 &&
+                        this.camera.position.z >
+                            block.worldBox.min.z - this.#WIDTH / 2 &&
+                        this.camera.position.z <
+                            block.worldBox.max.z + this.#WIDTH / 2;
 
-        blocks = [
-            map.getBlockAt(zfl.x, zfl.y, zfl.z),
-            map.getBlockAt(zfr.x, zfr.y, zfr.z),
-        ];
-
-        for (let block of blocks) {
-            if (block == null || collided.includes(block.id)) continue;
-            if (this.hitBox.max.z >= block.min.z + this.#EPS) {
-                const diff = block.min.z - this.hitBox.max.z;
-                this.camera.position.z += diff + this.#EPS;
-                this.updateHitBox();
-                collided.push(block.id);
-                break;
-            }
-        }
-
-        const zbl = new THREE.Vector3(
-            this.hitBox.min.x,
-            this.hitBox.min.y,
-            this.hitBox.min.z - 0.25
-        );
-        const zbr = new THREE.Vector3(
-            this.hitBox.max.x,
-            this.hitBox.min.y,
-            this.hitBox.min.z - 0.25
-        );
-
-        blocks = [
-            map.getBlockAt(zbl.x, zbl.y, zbl.z),
-            map.getBlockAt(zbr.x, zbr.y, zbr.z),
-        ];
-
-        for (let block of blocks) {
-            if (block == null || collided.includes(block.id)) continue;
-            if (this.hitBox.min.z <= block.max.z - this.#EPS) {
-                const diff = block.max.z - this.hitBox.min.z;
-                this.camera.position.z += diff - this.#EPS;
-                this.updateHitBox();
-                collided.push(block.id);
-                break;
+                    if (stillColliding) {
+                        this.camera.position.x -= velocity.x;
+                    }
+                }
             }
         }
     }
