@@ -78,7 +78,7 @@ class Player {
             spruce_planks,
         ];
 
-		// fill out and style hotbar
+        // fill out and style hotbar
         this.hotBar = [];
         this.activeItem = 9;
         for (let i = 0; i < 10; i++) {
@@ -186,7 +186,7 @@ class Player {
     }
 
     updateHitBox() {
-		// moves the hitbox to align with the camera position
+        // moves the hitbox to align with the camera position
         const hitBoxCenter = new THREE.Vector3(
             this.camera.position.x,
             this.camera.position.y - this.#HEIGHT + this.#CAMERA_Y_OFFSET,
@@ -214,7 +214,7 @@ class Player {
     collide(map, currentT) {
         let blocks;
 
-		// find head position for map
+        // find head position for map
         let playerPosFloored = new THREE.Vector3(
             Math.floor(this.camera.position.x),
             Math.floor(this.camera.position.y),
@@ -222,7 +222,7 @@ class Player {
         );
         let adjacentBlocks = [];
 
-		// grab adjacent blocks for collisions
+        // grab adjacent blocks for collisions
         for (let x = -1; x <= 1; x++) {
             for (let z = -1; z <= 1; z++) {
                 let block = map.getBlockAt(
@@ -236,8 +236,8 @@ class Player {
             }
         }
 
-		// handle player-block collisions
-		for (let block of adjacentBlocks) {
+        // handle player-block collisions
+        for (let block of adjacentBlocks) {
             let collided =
                 this.camera.position.x >
                     block.worldBox.min.x - this.#WIDTH / 2 &&
@@ -256,7 +256,7 @@ class Player {
                     .clone()
                     .sub(this.prevPosition);
 
-				// undo player movement if in block
+                // undo player movement if in block
                 if (Math.abs(velocity.x) > Math.abs(velocity.z)) {
                     this.camera.position.x -= velocity.x;
                     let stillColliding =
@@ -342,7 +342,7 @@ class Player {
             }
         }
 
-		// perform same collision logic as head but for bottom portion
+        // perform same collision logic as head but for bottom portion
         let playerFeetFloored = new THREE.Vector3(
             Math.floor(this.camera.position.x),
             Math.floor(this.camera.position.y - this.#CAMERA_Y_OFFSET),
