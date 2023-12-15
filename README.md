@@ -6,10 +6,12 @@ This is our final project for COS426. We created a simplified version of the pop
 
 Check out the live demo on our GitHub pages website: [Minecraft at Home!](https://tim-gubski.github.io/Minecraft-at-Home/)
 
-link to writeup
+### Controls:
+
+Use WASD to move around the environment and space to jump, left click to break blocks, right click to place blocks, and the scroll wheel for the hotbar or the numbers 0-9.
 
 ## COS 426 Submission
 
-Video: [Youtube Video](https://tim-gubski.github.io/Minecraft-at-Home/)
+Video: [Youtube Video](https://youtu.be/s3LjB8golBE)
 
 Write-up: [Write-up PDF](https://github.com/Tim-gubski/Minecraft-at-Home/blob/main/MinecraftAtHome.pdf)
