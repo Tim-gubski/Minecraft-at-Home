@@ -4,12 +4,12 @@ This is our final project for COS426. We created a simplified version of the pop
 
 ## Try it out!
 
-Check out the live demo on our GitHub pages website: [Minecraft at Home!](https://tim-gubski.github.io/COS426_Game/)
+Check out the live demo on our GitHub pages website: [Minecraft at Home!](https://tim-gubski.github.io/Minecraft-at-Home/)
 
 link to writeup
 
 ## COS 426 Submission
 
-Video:
+Video: [Youtube Video](https://tim-gubski.github.io/Minecraft-at-Home/)
 
-Write-up:
+Write-up: [Write-up PDF](https://github.com/Tim-gubski/Minecraft-at-Home/blob/main/MinecraftAtHome.pdf)
