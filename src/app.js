@@ -186,9 +186,9 @@ const onAnimationFrameHandler = (timeStamp) => {
         removeCube = false;
     }
 
-	// for building blocks
+    // for building blocks
     if (intersects.length > 0 && intersects[0].distance < 10) {
-		// add reticle display
+        // add reticle display
         let cubePos = intersects[0].point;
         let toCamera = player.camera.position.clone().sub(cubePos);
         cubePos.add(toCamera.normalize().multiplyScalar(0.1));
@@ -199,9 +199,9 @@ const onAnimationFrameHandler = (timeStamp) => {
         );
         scene.add(reticle);
 
-		// add cube while building
+        // add cube while building
         if (addCube) {
-			// load correct texture
+            // load correct texture
             let texture = new THREE.TextureLoader().load(
                 player.hotBar[player.activeItem].texture
             );
@@ -233,10 +233,11 @@ const onAnimationFrameHandler = (timeStamp) => {
             map.addBlock(
                 cubePreview.position.x,
                 cubePreview.position.y,
-                cubePreview.position.z
+                cubePreview.position.z,
+                cubePreview
             );
 
-			// add lighting to blocks with light
+            // add lighting to blocks with light
             if (player.hotBar[player.activeItem].isGlowing) {
                 let light = new THREE.PointLight(0xffffff, 1, 8);
                 light.position.set(

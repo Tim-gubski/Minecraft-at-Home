@@ -1,6 +1,6 @@
 {
-    "name": "cos436_game",
-    "repository": "COS426_Game",
+    "name": "minecraft-at-home",
+    "repository": "Minecraft at Home",
     "version": "0.1.0",
     "title": "MineCraft at Home",
     "description": "We built a game that resembles the popular game MineCraft but using ThreeJS.",
